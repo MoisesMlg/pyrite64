@@ -26,8 +26,10 @@ This allows you to model at reasonable scales in blender, while keeping precisio
 
 You can compensate for this by scaling the model up or down in the editor. \
 Please be aware that wanting 1:1 units with blender will cause precision issues eventually. \
-So try to not rely on it too much. \
-If you notice models looking very blocky, you can try increasing the pre-scaling factor.
+So try to not rely on it too much.
+
+If you notice models looking very blocky, or squished to small sizes, \
+you can try increasing the pre-scaling factor.
 
 By default, the editor tries to show a good scaling range, \
 so try to keep the general world-scale along the lines of 1unit = 1cm at runtime.
