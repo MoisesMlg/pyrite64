@@ -115,7 +115,7 @@ As a practical example, here we overlay two gradient textures by adding them tog
 The prim-color determines the strength. As we change it, we can observe overflow occurring:
 
 <video width="700" controls loop muted>
-   <source src="/_static/img/cc_overflow.mp4" type="video/mp4">
+   <source src="../../../../_static/img/cc_overflow.mp4" type="video/mp4">
 </video>
 
 As a graph, this looks like this:
