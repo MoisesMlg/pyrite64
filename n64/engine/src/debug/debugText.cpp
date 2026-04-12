@@ -26,10 +26,6 @@ void P64::Debug::printStart() {
   rdpq_tex_upload(TILE0, &surf, nullptr);
 }
 
-extern "C" {
-  extern void __rdpq_texture_rectangle(uint32_t w0, uint32_t w1, uint32_t w2, uint32_t w3);
-}
-
 int P64::Debug::print(uint16_t x, uint16_t y, const char *str) {
   constexpr uint16_t CHAR_PER_ROW = 16;
   constexpr uint16_t CHAR_WIDTH = 8;
