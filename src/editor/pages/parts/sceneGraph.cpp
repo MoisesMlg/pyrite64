@@ -319,6 +319,7 @@ namespace
           auto added = scene.addObject(obj);
           if (added) {
             ctx.setObjectSelection(added->uuid);
+            startRenaming(added->uuid);
           }
           Editor::UndoRedo::getHistory().markChanged("Add Object");
         }
