@@ -51,6 +51,39 @@ namespace
       + (ImGui::GetCurrentWindow()->ScrollbarY ? 0 : style.ScrollbarSize);
   }
 
+  /**
+   * Clears the current inline renaming state.
+   */
+  void clearRenaming()
+  {
+    renameObjectUUID = 0;
+    renameBuffer.clear();
+    startingRename = false;
+  }
+
+  /**
+   * Starts inline renaming for an object.
+   *
+   * @param objectUUID UUID of the object to rename
+   * @param objectName Current name
+   */
+  void startRenaming(uint32_t objectUUID)
+  {
+    // Get the scene to look for the object
+    auto scene = ctx.project->getScenes().getLoadedScene();
+    if (!scene) return;
+
+    // Can find object with such UUID --> Start renaming
+    if (const std::shared_ptr<Project::Object> theObject = scene->getObjectByUUID(objectUUID)) {
+      renameObjectUUID = objectUUID;
+      renameBuffer = theObject->name;
+      startingRename = true;
+    // Cannot find object with such UUID (selection may have gone stale between frames) --> Cancel renaming
+    } else {
+      clearRenaming();
+    }
+  }
+
   bool DrawDropTarget(uint32_t& dragDropTarget, uint32_t uuid, float thickness = 2.0f, float hitHeight = 8.0f)
   {
     // Only show when drag-drop is active
@@ -147,8 +180,7 @@ namespace
     bool finishRename = confirmRename || ImGui::IsItemDeactivated();
     // Canceled --> Clear renaming
     if (cancelRename) {
-      renameObjectUUID = 0;
-      renameBuffer.clear();
+      clearRenaming();
     // Finished renaming --> Commit name
     } else if (finishRename) {
       // Given new name --> Apply to object
@@ -156,8 +188,7 @@ namespace
         obj.name = renameBuffer;
         Editor::UndoRedo::getHistory().markChanged("Edit object name");
       }
-      renameObjectUUID = 0;
-      renameBuffer.clear();
+      clearRenaming();
     }
 
     ImGui::SetCursorPos(oldCursorPos);
@@ -201,9 +232,17 @@ namespace
     bool nodeIsClicked = ImGui::IsItemHovered()
       && ImGui::IsMouseReleased(ImGuiMouseButton_Left)
       && !ImGui::IsMouseDragging(ImGuiMouseButton_Left);
+    bool nodeIsDoubleClicked = ImGui::IsItemHovered()
+      && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
+      && !ImGui::IsMouseDragging(ImGuiMouseButton_Left);
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
       ImGui::OpenPopup("NodePopup");
     }
+
+    // Double-clicked a node --> Start renaming
+    if (nodeIsDoubleClicked)
+      startRenaming(obj.uuid);
+
     bool isRenaming = renameObjectUUID == obj.uuid;
 
     if (obj.parent && ImGui::BeginDragDropSource())
@@ -324,16 +363,8 @@ void Editor::SceneGraph::draw()
     const std::vector<uint32_t> &selectedIds = ctx.getSelectedObjectUUIDs();
     // Inline renaming only makes sense for a single target; multi-select keeps its current state
     if (selectedIds.size() == 1) {
-      renameObjectUUID = selectedIds.front();
-      if (const std::shared_ptr<Project::Object> selectedObj = scene->getObjectByUUID(renameObjectUUID)) {
-        // Seed the input with the current object name and arm the first-frame focus handoff
-        renameBuffer = selectedObj->name;
-        startingRename = true;
-      } else {
-        // The selection may have gone stale between frames, so bail out cleanly
-        renameObjectUUID = 0;
-        renameBuffer.clear();
-      }
+      // Rename the selected object
+      startRenaming(selectedIds.front());
     }
   }
 
