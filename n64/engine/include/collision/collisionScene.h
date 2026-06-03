@@ -1,15 +1,15 @@
 /**
- * @file collision_scene.h
+ * @file collisionScene.h
  * @author Kevin Reier <https://github.com/Byterset>
  * @brief Defines the Collision Scene which keeps track of physics participants and updates them
  */
 #pragma once
 
-#include "rigid_body.h"
-#include "collider_shape.h"
-#include "mesh_collider.h"
+#include "rigidBody.h"
+#include "colliderShape.h"
+#include "meshCollider.h"
 #include "contact.h"
-#include "aabb_tree.h"
+#include "aabbTree.h"
 #include "raycast.h"
 #include <array>
 #include <deque>
@@ -23,8 +23,7 @@
 namespace P64::Coll {
   constexpr int MAX_OBJ_COLLISION_CANDIDATES = 15;
   constexpr float DEFAULT_FIXED_DT = 1.0f / 50.0f;
-  constexpr float DEFAULT_PHYSICS_SCALE = 16.0f;
-  constexpr fm_vec3_t DEFAULT_GRAVITY = {0.0f, -9.8f, 0.0f}; //scaled with Pyrites default scale for assets
+  constexpr fm_vec3_t DEFAULT_GRAVITY = {0.0f, -9.8f, 0.0f};
   constexpr uint8_t DEFAULT_VELOCITY_SOLVER_ITERATIONS = 8;
   constexpr uint8_t DEFAULT_POSITION_SOLVER_ITERATIONS = 7;
   constexpr float WARM_STARTING_FACTOR = 0.85f; // Bullet-style warm starting scale to prevent overcorrection from stale impulses
@@ -67,6 +66,16 @@ namespace P64::Coll {
     RigidBody *findRigidBodyByObjectId(uint16_t id) const;
     const std::vector<RigidBody *> &getRigidBodies() const { return rigidBodies_; }
 
+    static void enableRigidBody(RigidBody *rigidBody);
+
+    /// @brief Temporarily exclude the given RigidBody from the simulation.
+    ///
+    /// While disabled, the body will be immune to collision (allowing it to pass through objects) and will not receive
+    /// changes to force, velocity, or acceleration.
+    /// Manually moving the body (via RigidBody::setPosition()/RigidBody::setRotation()) is still allowed.
+    /// Call enableRigidBody() to re-enable the RigidBody.
+    void disableRigidBody(RigidBody *rigidBody);
+
     void addCollider(Collider *collider);
     void removeCollider(Collider *collider);
     const std::vector<Collider *> &getColliders() const { return colliders_; }
@@ -74,12 +83,10 @@ namespace P64::Coll {
     void addMeshCollider(MeshCollider *mesh);
     void removeMeshCollider(MeshCollider *mesh);
 
-    void configureSimulation(float fixedDt, const fm_vec3_t &gravity, uint8_t velocityIterations, uint8_t positionIterations, float physicsScale);
+    void configureSimulation(float fixedDt, const fm_vec3_t &gravity, uint8_t velocityIterations, uint8_t positionIterations, float gfxScale);
     void wakeRigidBodyIsland(RigidBody *rigidBody);
 
     void step();
-
-    float getPhysicsScale() const { return physicsScale_; }
 
     int getCachedConstraintCount() const;
     ContactConstraint &getCachedConstraint(int index);
@@ -103,12 +110,12 @@ namespace P64::Coll {
     std::vector<ContactConstraint *> solverConstraints_{};
 
     AABBTree colliderAABBTree;
+    AABBTree meshColliderAABBTree;
 
     // Multiple mesh colliders
     std::vector<MeshCollider *> meshColliders_{};
 
     float fixedDt_{DEFAULT_FIXED_DT};
-    float physicsScale_{DEFAULT_PHYSICS_SCALE};
     fm_vec3_t gravity_{DEFAULT_GRAVITY};
     uint8_t velocitySolverIterations_{DEFAULT_VELOCITY_SOLVER_ITERATIONS};
     uint8_t positionSolverIterations_{DEFAULT_POSITION_SOLVER_ITERATIONS};

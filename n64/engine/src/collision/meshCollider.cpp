@@ -1,10 +1,11 @@
 /**
  * @file mesh_collider.cpp
  * @author Kevin Reier <https://github.com/Byterset>
- * @brief Mesh Collider definitions and functions (see mesh_collider.h)
+ * @brief Mesh Collider definitions and functions (see meshCollider.h)
  */
-#include "collision/mesh_collider.h"
-#include "collision/collider_shape.h"
+#include "collision/gfxScale.h"
+#include "collision/meshCollider.h"
+#include "collision/colliderShape.h"
 #include "scene/object.h"
 #include "collision/epa.h"
 
@@ -103,7 +104,7 @@ namespace P64::Coll {
   // ── MeshCollider transform ────────────────────────────────────────
 
   fm_vec3_t MeshCollider::toWorldSpace(const fm_vec3_t &localPoint) const {
-    fm_vec3_t position = owner_ ? owner_->pos : VEC3_ZERO;
+    fm_vec3_t position = owner_ ? owner_->pos * getInvGfxScale() : VEC3_ZERO;
     fm_quat_t rotation = owner_ ? owner_->rot : QUAT_IDENTITY;
     fm_vec3_t scale = owner_ ? owner_->scale : fm_vec3_t{{1.0f, 1.0f, 1.0f}};
     fm_vec3_t scaled = localPoint * scale;
@@ -120,7 +121,7 @@ namespace P64::Coll {
     fm_vec3_t p = worldPoint;
     fm_vec3_t scale = owner_ ? owner_->scale : fm_vec3_t{{1.0f, 1.0f, 1.0f}};
     if(hasPosition()) {
-      p = p - owner_->pos;
+      p = p - owner_->pos * getInvGfxScale();
     }
     if(hasRotation()) {
       p = quatConjugate(owner_->rot) * p;
@@ -163,7 +164,8 @@ namespace P64::Coll {
 
   bool MeshCollider::hasPosition() const {
     if(!owner_) return false;
-    return fm_vec3_len2(&owner_->pos) > FM_EPSILON * FM_EPSILON;
+    fm_vec3_t ownerPhysicsPos = owner_->pos * getInvGfxScale();
+    return fm_vec3_len2(&ownerPhysicsPos) > FM_EPSILON * FM_EPSILON;
   }
 
   bool MeshCollider::hasScale() const {
@@ -183,7 +185,8 @@ namespace P64::Coll {
     if(!owner_) return false;
     if(!hasCachedOwnerTransform_) return true;
 
-    if(fm_vec3_distance2(&owner_->pos, &lastOwnerPosition_) > FM_EPSILON * FM_EPSILON) return true;
+  fm_vec3_t ownerPhysicsPos = owner_->pos * getInvGfxScale();
+    if(fm_vec3_distance2(&ownerPhysicsPos, &lastOwnerPosition_) > FM_EPSILON * FM_EPSILON) return true;
     if(fm_vec3_distance2(&owner_->scale, &lastOwnerScale_) > FM_EPSILON * FM_EPSILON) return true;
 
     const float rotSim = fabsf(quatDot(owner_->rot, lastOwnerRotation_));
@@ -196,7 +199,7 @@ namespace P64::Coll {
       lastOwnerRotation_ = QUAT_IDENTITY;
       lastOwnerScale_ = fm_vec3_t{{1.0f, 1.0f, 1.0f}};
     } else {
-      lastOwnerPosition_ = owner_->pos;
+      lastOwnerPosition_ = owner_->pos * getInvGfxScale();
       lastOwnerRotation_ = owner_->rot;
       lastOwnerScale_ = owner_->scale;
     }
@@ -300,7 +303,7 @@ namespace P64::Coll {
     // Copy vertex data
     collider->vertices_ = new fm_vec3_t[header->vertCount];
     for(uint32_t i = 0; i < header->vertCount; ++i) {
-      collider->vertices_[i] = vertexData[i];
+      collider->vertices_[i] = vertexData[i] * getInvGfxScale();
     }
 
     // Copy triangle indices
@@ -323,14 +326,21 @@ namespace P64::Coll {
     }
 
     // Bind to owner object
-  collider->owner_ = obj;
+    collider->owner_ = obj;
 
-    // Build AABB tree from triangle bounding boxes
-    // Need 2*N-1 internal nodes for N leaves, plus some margin
-    int treeCapacity = static_cast<int>(header->triCount) * 2 + 1;
+    buildAabbTree(collider);
+    collider->syncOwnerTransform();
+
+    return collider;
+  }
+
+  // Build AABB tree from triangle bounding boxes
+  // Need 2*N-1 internal nodes for N leaves, plus some margin
+  void MeshCollider::buildAabbTree(MeshCollider* collider) {
+    int treeCapacity = static_cast<int>(collider->triangleCount_) * 2 + 1;
     collider->aabbTree_.init(treeCapacity);
 
-    for(uint32_t t = 0; t < header->triCount; ++t) {
+    for(uint32_t t = 0; t < collider->triangleCount_; ++t) {
       const fm_vec3_t &v0 = collider->vertices_[collider->triangles_[t].indices[0]];
       const fm_vec3_t &v1 = collider->vertices_[collider->triangles_[t].indices[1]];
       const fm_vec3_t &v2 = collider->vertices_[collider->triangles_[t].indices[2]];
@@ -345,6 +355,28 @@ namespace P64::Coll {
 
     collider->computeLocalRootAabb();
     collider->recalculateWorldAabb();
+  }
+
+  MeshCollider* MeshCollider::create(fm_vec3_t* vertices, uint16_t vertexCount, MeshTriangleIndices* triangleIndices, uint16_t triangleCount, Object *owner) {
+    if (!vertices || vertexCount == 0 || !triangleIndices || triangleCount == 0) return nullptr;
+
+    auto *collider = new MeshCollider();
+    collider->vertices_ = vertices;
+    collider->vertexCount_ = vertexCount;
+    collider->triangles_ = triangleIndices;
+    collider->triangleCount_ = triangleCount;
+    collider->owner_ = owner;
+
+    collider->normals_ = new fm_vec3_t[triangleCount];
+    for (uint16_t t = 0; t < triangleCount; ++t) {
+      const auto& indices = triangleIndices[t].indices;
+      fm_vec3_t v0 = vertices[indices[0]];
+      fm_vec3_t v1 = vertices[indices[1]];
+      fm_vec3_t v2 = vertices[indices[2]];
+      collider->normals_[t] = triangleNormalFromVertices(v0, v1, v2);
+    }
+
+    buildAabbTree(collider);
     collider->syncOwnerTransform();
 
     return collider;
