@@ -213,7 +213,7 @@ namespace Project::Component::Model
     // get draw layer
     auto &layers = ctx.project->getScenes().getLoadedScene()->conf.layers3D;
     auto layerIdx = data.layerIdx.resolve(obj);
-    if(layerIdx < layers.size()) {
+    if(layerIdx >= 0 && layerIdx < (int)layers.size()) {
       auto &layer = layers[layerIdx];
       data.obj3D.uniform.mat.blender.x = layer.blender.resolve(obj);
       data.obj3D.uniform.mat.blender.y = data.obj3D.uniform.mat.blender.x;

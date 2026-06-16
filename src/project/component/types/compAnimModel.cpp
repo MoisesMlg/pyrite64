@@ -133,7 +133,7 @@ namespace Project::Component::AnimModel
           ImTable::add("Preview Anim.");
 
           ImGui::Combo("##", &selIdx, animNames.data(), animNames.size());
-          if(selIdx < animNames.size()) {
+          if(selIdx >= 0 && selIdx < (int)animNames.size()) {
             data.previewAnimName.value = animNames[selIdx];
           }
       }
