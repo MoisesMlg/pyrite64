@@ -110,6 +110,21 @@ namespace Project::Component
      * @return Effective aspect ratio used for rendering from this camera.
      */
     float getAspectRatio(Object& obj, Entry &entry, float fallbackAspect);
+
+    // Resolved view parameters of a camera component, used by the editor viewport to mirror it.
+    struct View { int resX{320}; int resY{240}; float aspect{4.0f/3.0f}; float fov{65.0f}; };
+    View getView(Object &obj, Entry &entry);
+  }
+
+  namespace Code
+  {
+    /**
+     * Assigns a Script to a Code component.
+     * @param entry Code component entry to assign the Script to.
+     * @param scriptUUID UUID of the Script.
+     * @param openScriptComboBox true to auto-open the combo box.
+     */
+    void setScript(Entry &entry, uint64_t scriptUUID, bool openScriptComboBox);
   }
 
   constexpr std::array TABLE{

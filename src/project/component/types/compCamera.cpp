@@ -116,6 +116,18 @@ namespace Project::Component::Camera
     return fallbackAspect > 0.0f ? fallbackAspect : 1.0f;
   }
 
+  View getView(Object &obj, Entry &entry)
+  {
+    Data &data = *static_cast<Data*>(entry.data.get());
+    auto size = data.vpSize.resolve(obj);
+    return View{
+      size.x,
+      size.y,
+      getAspectRatio(obj, entry, 4.0f / 3.0f),
+      data.fov.resolve(obj)
+    };
+  }
+
   /**
    * Builds the matrices used by the editor preview from the selected camera component.
    * @param obj Object that owns the camera component.
