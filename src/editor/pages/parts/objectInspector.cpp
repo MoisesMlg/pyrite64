@@ -455,19 +455,39 @@ void Editor::ObjectInspector::draw() {
           }
         };
 
-        ImTable::add("Pos");
-        ImGui::PushID("Pos");
+        ImTable::add("Position");
+        ImGui::PushID("Position");
         float posWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-        drawFloatField("PosX", mixedPos[0], posValue.x, posWidth, "Edit Pos", [&](float val) {
+        drawFloatField("PosX", mixedPos[0], posValue.x, posWidth, "Edit Position", [&](float val) {
           applyVec3Component(&Project::Object::pos, 0, val);
         });
         ImGui::SameLine();
-        drawFloatField("PosY", mixedPos[1], posValue.y, posWidth, "Edit Pos", [&](float val) {
+        drawFloatField("PosY", mixedPos[1], posValue.y, posWidth, "Edit Position", [&](float val) {
           applyVec3Component(&Project::Object::pos, 1, val);
         });
         ImGui::SameLine();
-        drawFloatField("PosZ", mixedPos[2], posValue.z, posWidth, "Edit Pos", [&](float val) {
+        drawFloatField("PosZ", mixedPos[2], posValue.z, posWidth, "Edit Position", [&](float val) {
           applyVec3Component(&Project::Object::pos, 2, val);
+        });
+        ImGui::PopID();
+
+        ImTable::add("Rotation");
+        ImGui::PushID("Rotation");
+        float rotWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 3.0f) / 4.0f;
+        drawFloatField("RotX", mixedRot[0], rotValue.x, rotWidth, "Edit Rotation", [&](float val) {
+          applyQuatComponent(&Project::Object::rot, 0, val);
+        });
+        ImGui::SameLine();
+        drawFloatField("RotY", mixedRot[1], rotValue.y, rotWidth, "Edit Rotation", [&](float val) {
+          applyQuatComponent(&Project::Object::rot, 1, val);
+        });
+        ImGui::SameLine();
+        drawFloatField("RotZ", mixedRot[2], rotValue.z, rotWidth, "Edit Rotation", [&](float val) {
+          applyQuatComponent(&Project::Object::rot, 2, val);
+        });
+        ImGui::SameLine();
+        drawFloatField("RotW", mixedRot[3], rotValue.w, rotWidth, "Edit Rotation", [&](float val) {
+          applyQuatComponent(&Project::Object::rot, 3, val);
         });
         ImGui::PopID();
 
@@ -484,26 +504,6 @@ void Editor::ObjectInspector::draw() {
         ImGui::SameLine();
         drawFloatField("ScaleZ", mixedScale[2], scaleValue.z, scaleWidth, "Edit Scale", [&](float val) {
           applyVec3Component(&Project::Object::scale, 2, val);
-        });
-        ImGui::PopID();
-
-        ImTable::add("Rot");
-        ImGui::PushID("Rot");
-        float rotWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 3.0f) / 4.0f;
-        drawFloatField("RotX", mixedRot[0], rotValue.x, rotWidth, "Edit Rot", [&](float val) {
-          applyQuatComponent(&Project::Object::rot, 0, val);
-        });
-        ImGui::SameLine();
-        drawFloatField("RotY", mixedRot[1], rotValue.y, rotWidth, "Edit Rot", [&](float val) {
-          applyQuatComponent(&Project::Object::rot, 1, val);
-        });
-        ImGui::SameLine();
-        drawFloatField("RotZ", mixedRot[2], rotValue.z, rotWidth, "Edit Rot", [&](float val) {
-          applyQuatComponent(&Project::Object::rot, 2, val);
-        });
-        ImGui::SameLine();
-        drawFloatField("RotW", mixedRot[3], rotValue.w, rotWidth, "Edit Rot", [&](float val) {
-          applyQuatComponent(&Project::Object::rot, 3, val);
         });
         ImGui::PopID();
 
@@ -592,13 +592,36 @@ void Editor::ObjectInspector::draw() {
     if(ImTable::start("Transform", tableObj))
     {
       ImTable::addObjProp(
-        "Pos",
+        "Position",
         xfSrc->pos,
         Editor::TransformUtils::preserveChildTransformsDuringEdit<glm::vec3>(obj.get(), [](glm::vec3 *val) -> bool {
           // Use the standard vector editor while preserving child offsets
           return ImTable::typedInput<glm::vec3>(val);
         }),
         nullptr
+      );
+
+      ImTable::addObjProp(
+        "Rotation",
+        xfSrc->rot,
+        Editor::TransformUtils::preserveChildTransformsDuringEdit<glm::quat>(obj.get(), [](glm::quat *val) -> bool {
+          // Use the standard quaternion editor while preserving child offsets
+          return ImTable::typedInput<glm::quat>(val);
+        }),
+        nullptr
+      );
+
+      // icon to toggle between quaternion and euler
+      ImGui::SameLine();
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 32_px);
+      if(ImGui::IconButton(ctx.prefs.showRotAsEuler ? ICON_MDI_AXIS_Z_ROTATE_CLOCKWISE : ICON_MDI_SPHERE, {24_px, 24_px})) {
+        ImGui::ClearActiveID();
+        ctx.prefs.showRotAsEuler = !ctx.prefs.showRotAsEuler;
+        ctx.prefs.save();
+      }
+      ImGui::SetItemTooltip(ctx.prefs.showRotAsEuler
+        ? "Change to Quaternion"
+        : "Change to Euler (degrees)"
       );
 
       if(xfSrc->proportionalScale)
@@ -654,29 +677,6 @@ void Editor::ObjectInspector::draw() {
       ImGui::SetItemTooltip(xfSrc->proportionalScale
         ? "Change to Independent Scale"
         : "Change to Proportional Scale"
-      );
-
-      ImTable::addObjProp(
-        "Rot",
-        xfSrc->rot,
-        Editor::TransformUtils::preserveChildTransformsDuringEdit<glm::quat>(obj.get(), [](glm::quat *val) -> bool {
-          // Use the standard quaternion editor while preserving child offsets
-          return ImTable::typedInput<glm::quat>(val);
-        }),
-        nullptr
-      );
-
-      // icon to toggle between quaternion and euler
-      ImGui::SameLine();
-      ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 32_px);
-      if(ImGui::IconButton(ctx.prefs.showRotAsEuler ? ICON_MDI_AXIS_Z_ROTATE_CLOCKWISE : ICON_MDI_SPHERE, {24_px, 24_px})) {
-        ImGui::ClearActiveID();
-        ctx.prefs.showRotAsEuler = !ctx.prefs.showRotAsEuler;
-        ctx.prefs.save();
-      }
-      ImGui::SetItemTooltip(ctx.prefs.showRotAsEuler
-        ? "Change to Quaternion"
-        : "Change to Euler (degrees)"
       );
 
       ImTable::end();
