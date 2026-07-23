@@ -11,6 +11,7 @@
 #include "IconsMaterialDesignIcons.h"
 #include "../../build/sceneContext.h"
 #include "../../utils/aabb.h"
+#include "../../utils/prop.h"
 
 namespace Editor
 {
@@ -31,6 +32,7 @@ namespace Project::Component
     int id{};
     uint64_t uuid{};
     std::string name{};
+    Property<bool> enabled{"enabled", true};
     std::shared_ptr<void> data{};
   };
 
