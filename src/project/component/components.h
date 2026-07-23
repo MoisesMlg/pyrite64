@@ -5,7 +5,10 @@
 #pragma once
 #include <array>
 #include <memory>
+#include <vector>
 #include <SDL3/SDL_gpu.h>
+
+#include "glm/vec3.hpp"
 
 #include "json.hpp"
 #include "IconsMaterialDesignIcons.h"
@@ -127,6 +130,39 @@ namespace Project::Component
      * @param openScriptComboBox true to auto-open the combo box.
      */
     void setScript(Entry &entry, uint64_t scriptUUID, bool openScriptComboBox);
+  }
+
+  namespace Model
+  {
+    /**
+     * Appends the visible model vertices in object-local coordinates.
+     * @param obj Object used to resolve component properties and mesh filters.
+     * @param entry Model component entry.
+     * @param vertices Destination vertex list.
+     */
+    void collectVertices(Object &obj, Entry &entry, std::vector<glm::vec3> &vertices);
+  }
+
+  namespace AnimModel
+  {
+    /**
+     * Appends the model vertices in object-local coordinates.
+     * @param obj Object used to resolve component properties.
+     * @param entry Animated Model component entry.
+     * @param vertices Destination vertex list.
+     */
+    void collectVertices(Object &obj, Entry &entry, std::vector<glm::vec3> &vertices);
+  }
+
+  namespace CollBody
+  {
+    /**
+     * Appends the Collider preview vertices in object-local coordinates.
+     * @param obj Object used to resolve the Collider transform and properties.
+     * @param entry Collider component entry.
+     * @param vertices Destination vertex list.
+     */
+    void collectVertices(Object &obj, Entry &entry, std::vector<glm::vec3> &vertices);
   }
 
   constexpr std::array TABLE{

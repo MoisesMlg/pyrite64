@@ -1002,6 +1002,18 @@ void Editor::Viewport3D::draw()
   if(isShiftDown)moveSpeed *= 4.0f;
 
   bool hasSelection = !ctx.getSelectedObjectUUIDs().empty();
+
+  // "V" key enables vertex snapping globally unless a text field is receiving keyboard input
+  bool vertexSnapMode = vertexSnapActive || (
+    hasSelection && ctx.selSubPath.empty() && !ImGui::GetIO().WantTextInput
+    && ImGui::IsKeyDown(ImGuiKey_V)
+  );
+
+  // Vertex dragging owns the left mouse button and must not start a box selection
+  if (vertexSnapMode) {
+    selectionPending = false;
+    selectionDragging = false;
+  }
   // Query under this viewport's gizmo id, else IsUsing()/IsOver() read the wrong id
   ImGuizmo::PushID((int)winId);
   bool overGizmo = hasSelection && ImGuizmo::IsOver();
@@ -1012,7 +1024,7 @@ void Editor::Viewport3D::draw()
   bool leftReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
   bool rightClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
 
-  if (!navLocked && !overGizmo && isMouseHover && leftClicked && !isAltDown && !overRotGizmo) {
+  if (!vertexSnapMode && !navLocked && !overGizmo && isMouseHover && leftClicked && !isAltDown && !overRotGizmo) {
     selectionPending = true;
     selectionDragging = false;
     selectionStart = mousePos;
@@ -1344,8 +1356,6 @@ void Editor::Viewport3D::draw()
 
   isMouseHover = ImGui::IsItemHovered();
 
-  drawCameraPreviewOverlay(currPos, currSize);
-
   if (selectionDragging) {
     glm::vec2 rectMin = glm::min(selectionStart, selectionEnd);
     glm::vec2 rectMax = glm::max(selectionStart, selectionEnd);
@@ -1373,6 +1383,8 @@ void Editor::Viewport3D::draw()
   // Snap settings (per gizmo mode, Ctrl to enable) plus the Manipulate call, shared by both
   // selection paths below. Returns true while the gizmo is being dragged.
   auto manipulateGizmo = [&](glm::mat4 &mat) -> bool {
+    // The transform gizmo must not compete with the vertex snap interaction
+    if (vertexSnapMode) return false;
     glm::vec3 snap(10.0f);
     if (gizmoOp == 1) snap = glm::vec3(90.0f / 4.0f);
     else if (gizmoOp == 2) snap = glm::vec3(0.125f);
